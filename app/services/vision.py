@@ -76,7 +76,7 @@ def _decode_base64(image_b64: str) -> bytes:
             raise HTTPException(status_code=400, detail="Malformed data URL.")
     try:
         image_bytes = base64.b64decode(image_b64, validate=True)
-    except (binascii.Error, ValueError):
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image payload.")
@@ -149,7 +149,7 @@ async def recognize_item(image_b64: str) -> ItemDetails:
     try:
         return ItemDetails(**data)
     except ValidationError as exc:
-        logger.error("Vision response failed schema validation: %s", exc)
+        logger.exception("Vision response failed schema validation: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Vision response failed schema validation.",
