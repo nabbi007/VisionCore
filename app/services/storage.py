@@ -10,6 +10,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
+from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +21,24 @@ S3_PREFIX = os.getenv("S3_PREFIX", "scans")
 S3_ACL = os.getenv("S3_ACL") or None
 PUBLIC_URL_BASE = os.getenv("S3_PUBLIC_URL_BASE") or None
 
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 METADATA_TABLE = os.getenv("SUPABASE_IMAGE_TABLE", "image_metadata")
 
 _s3_client = None
+_supabase_client: Optional[Client] = None
+
+
+def _get_supabase() -> Client:
+    global _supabase_client
+    if _supabase_client is None:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Supabase credentials are not configured.",
+            )
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase_client
 
 
 class StoredImage(BaseModel):
@@ -112,9 +128,6 @@ async def _upload_to_s3(image_bytes: bytes, s3_key: str, content_type: str) -> s
 
 
 async def _save_metadata(record: dict) -> dict:
-    # Lazy import to avoid circular dependency (auth.py imports from this package).
-    from app.routes.auth import _get_supabase
-
     db = _get_supabase()
     try:
         res = await run_in_threadpool(

@@ -4,12 +4,12 @@ import hashlib
 import logging
 import os
 from collections import OrderedDict
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
-from app.middleware.security import get_current_user
+from app.middleware.security import verify_service_key
 from app.services.storage import store_image
 from app.services.vision import ItemDetails, recognize_item
 
@@ -61,7 +61,7 @@ async def _cache_set(key: str, value: CachedScan) -> None:
     summary="Recognize a POS item from an uploaded image.",
 )
 async def scan_image(
-    user: Annotated[Any, Depends(get_current_user)],
+    _: Annotated[None, Depends(verify_service_key)],
     image: Annotated[UploadFile, File(description="Product image (PNG, JPEG, GIF, or WebP).")],
     x_store_id: Annotated[Optional[str], Header(description="Identifier of the POS terminal/store.")] = None,
 ) -> ScanResponse:
@@ -84,11 +84,10 @@ async def scan_image(
         )
 
     cache_key = hashlib.sha256(image_bytes).hexdigest()
-    user_id = getattr(user, "id", None) or getattr(user, "username", "?")
 
     cached = await _cache_get(cache_key)
     if cached is not None:
-        logger.info("scan cache hit user=%s key=%s", user_id, cache_key[:12])
+        logger.info("scan cache hit store=%s key=%s", x_store_id, cache_key[:12])
         return ScanResponse(
             details=cached.details,
             image_id=cached.image_id,
@@ -110,7 +109,7 @@ async def scan_image(
         cache_key,
         CachedScan(details=details, image_url=stored.url, image_id=stored.image_id),
     )
-    logger.info("scan cache miss user=%s key=%s image_id=%s", user_id, cache_key[:12], stored.image_id)
+    logger.info("scan cache miss store=%s key=%s image_id=%s", x_store_id, cache_key[:12], stored.image_id)
     return ScanResponse(
         details=details,
         image_id=stored.image_id,

@@ -12,7 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi import _rate_limit_exceeded_handler
 
 from app.middleware.security import RequestLoggingMiddleware, limiter
-from app.routes import auth, scan
+from app.routes import scan
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +45,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(scan.router, prefix="/scan", tags=["scan"])
 
 

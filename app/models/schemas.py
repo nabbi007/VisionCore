@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class ItemDetails(BaseModel):
@@ -22,22 +22,6 @@ class ScanResponse(BaseModel):
     image_id: str = Field(..., description="UUID assigned to the stored image.")
     image_url: str = Field(..., description="Public URL of the uploaded image.")
     cached: bool = Field(..., description="True if served from the recognition cache.")
-
-
-class UserRegister(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int = Field(..., description="Token lifetime in seconds.")
 
 
 class ImageMetadata(BaseModel):
